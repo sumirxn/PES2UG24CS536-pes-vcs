@@ -24,6 +24,8 @@
 #include <unistd.h>
 #include <dirent.h>
 
+int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out);
+
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
 // Find an index entry by path (linear scan).
@@ -214,6 +216,43 @@ int index_save(const Index *index) {
 int index_add(Index *index, const char *path) {
     // TODO: Implement file staging
     // (See Lab Appendix for logical steps)
-    (void)index; (void)path;
-    return -1;
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        fprintf(stderr, "error: cannot open '%s'\n", path);
+        return -1;
+    }
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    uint8_t *buf = malloc(sz);
+    if (!buf) { fclose(f); return -1; }
+    if ((long)fread(buf, 1, sz, f) != sz) {
+    free(buf); fclose(f); return -1;
+    }
+    fclose(f);
+
+    ObjectID hash;
+    if (object_write(OBJ_BLOB, buf, sz, &hash) != 0) {
+        free(buf); return -1;
+    }
+    free(buf);
+
+    struct stat st;
+    if (lstat(path, &st) != 0) return -1;
+
+    IndexEntry *e = index_find(index, path);
+    if (!e) {
+        if (index->count >= MAX_INDEX_ENTRIES) return -1;
+        e = &index->entries[index->count++];
+    }
+
+    strncpy(e->path, path, sizeof(e->path) - 1);
+    e->path[sizeof(e->path) - 1] = '\0';
+    e->hash      = hash;
+    e->mode      = (st.st_mode & S_IXUSR) ? 0100755 : 0100644;
+    e->mtime_sec = (uint64_t)st.st_mtime;
+    e->size      = (uint32_t)st.st_size;
+
+    return index_save(index);
 }
