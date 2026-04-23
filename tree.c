@@ -160,8 +160,36 @@ static int write_tree_level(IndexEntry *entries, int count, const char *prefix, 
             e->name[sizeof(e->name) - 1] = '\0';
             i++;
         } else {
-            // Has a slash, skip for now (handled in next commit)
-            i++;
+            // Get the directory name e.g. "src" from "src/main.c"
+            size_t dir_len = slash - rel;
+            char dir_name[256];
+            strncpy(dir_name, rel, dir_len);
+            dir_name[dir_len] = '\0';
+
+            // Build new prefix for recursion e.g. "src/"
+            char sub_prefix[512];
+            snprintf(sub_prefix, sizeof(sub_prefix), "%s%s/", prefix, dir_name);
+
+            // Collect all entries belonging to this subdirectory
+            int j = i;
+            while (j < count &&
+                   strncmp(entries[j].path + prefix_len, dir_name, dir_len) == 0 &&
+                   entries[j].path[prefix_len + dir_len] == '/')
+                j++;
+
+            // Recurse to build the subtree
+            ObjectID sub_id;
+            if (write_tree_level(entries + i, j - i, sub_prefix, &sub_id) != 0)
+                return -1;
+
+            // Add subtree as a directory entry
+            TreeEntry *e = &tree.entries[tree.count++];
+            e->mode = 0040000;
+            e->hash = sub_id;
+            strncpy(e->name, dir_name, sizeof(e->name) - 1);
+            e->name[sizeof(e->name) - 1] = '\0';
+
+            i = j;
         }
     }
 
