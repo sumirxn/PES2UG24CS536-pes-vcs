@@ -147,7 +147,24 @@ static int write_tree_level(IndexEntry *entries, int count, const char *prefix, 
     tree.count = 0;
     size_t prefix_len = strlen(prefix);
     int i = 0;
+    while (i < count) {
+        const char *rel = entries[i].path + prefix_len;
+        const char *slash = strchr(rel, '/');
 
-    (void)entries; (void)count; (void)prefix_len; (void)i; (void)id_out;
+        if (!slash) {
+            // Plain file, add directly as a blob entry
+            TreeEntry *e = &tree.entries[tree.count++];
+            e->mode = entries[i].mode;
+            e->hash = entries[i].hash;
+            strncpy(e->name, rel, sizeof(e->name) - 1);
+            e->name[sizeof(e->name) - 1] = '\0';
+            i++;
+        } else {
+            // Has a slash, skip for now (handled in next commit)
+            i++;
+        }
+    }
+
+    (void)id_out;
     return -1; // not done yet
 }
