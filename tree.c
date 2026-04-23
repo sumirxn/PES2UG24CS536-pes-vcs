@@ -193,6 +193,12 @@ static int write_tree_level(IndexEntry *entries, int count, const char *prefix, 
         }
     }
 
-    (void)id_out;
-    return -1; // not done yet
+    // Serialize and write this tree to the object store
+    void *tree_data;
+    size_t tree_len;
+    if (tree_serialize(&tree, &tree_data, &tree_len) != 0) return -1;
+
+    int rc = object_write(OBJ_TREE, tree_data, tree_len, id_out);
+    free(tree_data);
+    return rc;
 }
