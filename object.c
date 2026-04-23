@@ -142,8 +142,20 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         close(fd); free(full); return -1;
     }
 
+    fsync(fd);
     close(fd);
     free(full);
+    
+    // Atomic rename from temp to final path
+    if (rename(tmp_path, obj_path) != 0) return -1;
+
+    // fsync the shard directory to persist the rename
+    int dir_fd = open(shard_dir, O_RDONLY);
+    if (dir_fd >= 0) {
+        fsync(dir_fd);
+        close(dir_fd);
+    }
+
     if (id_out) *id_out = id;
     return 0;
 }
