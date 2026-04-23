@@ -94,28 +94,22 @@ int object_exists(const ObjectID *id) {
 //
 // Returns 0 on success, -1 on error.
 int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out) {
-    // TODO: Implement
-    // Determine type string
     const char *type_str;
     if (type == OBJ_BLOB)        type_str = "blob";
     else if (type == OBJ_TREE)   type_str = "tree";
     else                         type_str = "commit";
 
-    // Build header: "blob 42\0" — +1 includes the null byte
     char header[64];
     int header_len = snprintf(header, sizeof(header), "%s %zu", type_str, len) + 1;
 
-    // Allocate one buffer: header + data combined
     size_t total = header_len + len;
     uint8_t *full = malloc(total);
     if (!full) return -1;
     memcpy(full, header, header_len);
     memcpy(full + header_len, data, len);
 
-    free(full); // placeholder — next commit will use this
+    free(full);
     (void)id_out;
-    return -1;  // not done yet
-    (void)type; (void)data; (void)len; (void)id_out;
     return -1;
 }
 
