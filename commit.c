@@ -218,6 +218,18 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     // Step 4: fill in the message
     snprintf(c.message, sizeof(c.message), "%s", message);
 
+    // Step 5: serialize the commit struct to text
+    void *raw;
+    size_t raw_len;
+    if (commit_serialize(&c, &raw, &raw_len) != 0) return -1;
+
+    // Step 6: write it as a commit object
+    ObjectID commit_id;
+    if (object_write(OBJ_COMMIT, raw, raw_len, &commit_id) != 0) {
+        free(raw); return -1;
+    }
+    free(raw);
+    
     (void)commit_id_out;
     return -1;
 }
