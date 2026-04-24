@@ -229,7 +229,10 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
         free(raw); return -1;
     }
     free(raw);
-    
-    (void)commit_id_out;
-    return -1;
+
+    // Step 7: update HEAD to point to the new commit
+    if (head_update(&commit_id) != 0) return -1;
+
+    if (commit_id_out) *commit_id_out = commit_id;
+    return 0;
 }
