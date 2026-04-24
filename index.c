@@ -180,8 +180,10 @@ int index_load(Index *index) {
 int index_save(const Index *index) {
     // TODO: Implement atomic index saving
     // (See Lab Appendix for logical steps)
-    Index sorted = *index;
-    qsort(sorted.entries, sorted.count, sizeof(IndexEntry), cmp_entries);
+    Index *sorted = malloc(sizeof(Index));
+    if (!sorted) return -1;
+    *sorted = *index;
+    qsort(sorted->entries, sorted->count, sizeof(IndexEntry), cmp_entries);
 
     char tmp[256];
     snprintf(tmp, sizeof(tmp), "%s.tmp", INDEX_FILE);
@@ -190,8 +192,8 @@ int index_save(const Index *index) {
     if (!f) return -1;
 
     char hex[HASH_HEX_SIZE + 1];
-    for (int i = 0; i < sorted.count; i++) {
-        IndexEntry *e = &sorted.entries[i];
+    for (int i = 0; i < sorted->count; i++) {
+        IndexEntry *e = &sorted->entries[i];
         hash_to_hex(&e->hash, hex);
         fprintf(f, "%o %s %lu %u %s\n",
                 e->mode, hex, e->mtime_sec, e->size, e->path);
@@ -225,10 +227,12 @@ int index_add(Index *index, const char *path) {
     long sz = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    uint8_t *buf = malloc(sz);
+    if (sz < 0) { fclose(f); return -1; }
+
+    uint8_t *buf = malloc(sz + 1);
     if (!buf) { fclose(f); return -1; }
-    if ((long)fread(buf, 1, sz, f) != sz) {
-    free(buf); fclose(f); return -1;
+    if ((long)fread(buf, 1, sz, f) != sz){
+        free(buf); fclose(f); return -1;
     }
     fclose(f);
 
